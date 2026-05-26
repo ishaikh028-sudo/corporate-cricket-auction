@@ -72,3 +72,6 @@ xlsxwriter==3.2.9
 gunicorn
 gevent
 gevent-websocket
+flask-sqlalchemy
+flask-socketio
+flask-cors
