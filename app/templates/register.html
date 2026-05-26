@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+
+{% block title %}Add Player - Presolv360 Cricket League{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center my-5">
+    <div class="col-md-6 col-lg-5">
+        <div class="card p-4 shadow-lg bg-dark border border-secondary">
+            <h3 class="fw-bold text-white text-center mb-4"><i class="fa-solid fa-user-plus text-warning me-2"></i>Add Player</h3>
+            
+            <form action="/register" method="POST" enctype="multipart/form-data">
+                <div class="mb-3">
+                    <label class="form-label text-white fw-semibold small">Full Name</label>
+                    <input type="text" name="full_name" class="form-control" placeholder="Enter full name" required>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label text-white fw-semibold small">Department</label>
+                    <input type="text" name="department" class="form-control" placeholder="Enter department" required>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label text-white fw-semibold small">Role</label>
+                    <select name="role" class="form-select" required>
+                        <option value="" disabled selected hidden>Select player role...</option>
+                        <option value="Batsman">Batsman</option>
+                        <option value="Bowler">Bowler</option>
+                        <option value="All Rounder">All Rounder</option>
+                    </select>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="form-label text-white fw-semibold small">Player Photo</label>
+                    <input type="file" name="photo" class="form-control">
+                </div>
+                
+                <button type="submit" class="btn btn-warning w-100 fw-bold py-2 shadow">Register Profile</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

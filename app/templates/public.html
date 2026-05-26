@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+
+{% block title %}Franchise Leaderboards & Rosters{% endblock %}
+
+{% block extra_styles %}
+.public-team-card { background-color: #1e293b; border: 1px solid #334155; border-radius: 12px; }
+.roster-badge { background-color: #0f172a; border: 1px solid #475569; color: #cbd5e1; font-size: 0.8rem; }
+{% endblock %}
+
+{% block content %}
+<div class="container my-2">
+    <div class="text-center mb-4">
+        <h2 class="fw-bold text-white"><i class="fa-solid fa-chart-pie text-info me-2"></i>Franchise Financial Standing</h2>
+        <p class="text-muted small">Real-time breakdown of remaining corporate draft budgets and active roster lists.</p>
+    </div>
+
+    <div class="row g-4">
+        {% if not teams %}
+            <div class="col-12 text-center py-4">
+                <p class="text-muted">No franchise structures have been initialized yet.</p>
+            </div>
+        {% else %}
+            {% for team in teams %}
+                <div class="col-lg-6">
+                    <div class="card public-team-card p-4 h-100">
+                        <div class="d-flex justify-content-between align-items-start border-bottom border-secondary pb-3 mb-3">
+                            <div>
+                                <h4 class="fw-bold text-white m-0">🏆 {{ team.team_name }}</h4>
+                                <small class="text-muted">Captain/Owner: <strong class="text-light">{{ team.captain_name }}</strong></small>
+                            </div>
+                            <div class="text-end">
+                                <span class="text-muted d-block small fw-bold">REMAINING PURSE</span>
+                                <span class="fs-4 fw-bold text-success">₹{{ team.purse }}</span>
+                            </div>
+                        </div>
+
+                        <h6 class="fw-bold text-white-50 mb-2 small uppercase"><i class="fa-solid fa-id-badge text-warning me-1"></i> Secured Roster ({{ team.players|length }} Players)</h6>
+                        <div class="d-flex flex-wrap gap-2">
+                            {% if not team.players %}
+                                <span class="text-muted small italic py-2">No player assets purchased yet.</span>
+                            {% else %}
+                                {% for player in team.players %}
+                                    <span class="badge roster-badge p-2 d-flex align-items-center">
+                                        <i class="fa-solid fa-user-check text-success me-1"></i> {{ player.full_name }} 
+                                        <small class="text-info font-monospace ms-2">({{ player.role }})</small>
+                                    </span>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

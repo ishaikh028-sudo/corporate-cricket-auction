@@ -1,0 +1,221 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="row mb-4 align-items-center">
+    <div class="col-md-8">
+        <h2 class="fw-bold text-white mb-1">Franchise Captain Dashboard</h2>
+        <p class="text-muted small mb-0">Live read-only network stream monitor with private target wishlists.</p>
+    </div>
+    <div class="col-md-4 text-md-end mt-2 mt-md-0">
+        <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-20 px-3 py-2 font-monospace">Network Feed: Active Sync</span>
+    </div>
+</div>
+
+<div id="active-draft-board" class="row g-4 {% if auction_completed %}d-none{% endif %}">
+    <div class="col-xl-4 col-lg-5">
+        <div class="card glass-card p-4 text-center">
+            <h6 class="text-uppercase tracking-wider small text-white-50 font-semibold mb-3">🔨 Live Active Asset Block</h6>
+            
+            <img id="stage-card-photo" src="{% if player and player.photo %}{{ url_for('static', filename='uploads/' + player.photo) }}{% else %}#{% endif %}" class="w-100 object-fit-cover rounded-3 bg-dark mb-3" style="height: 300px;" alt="Active Stage Asset" onerror="this.src='/static/uploads/default_avatar.png'">
+            
+            <h3 id="stage-card-name" class="fw-bold text-white mb-1">{% if player %}{{ player.full_name }}{% else %}-{% endif %}</h3>
+            <p id="stage-card-dept" class="text-muted small mb-2">{% if player %}{{ player.department }}{% else %}-{% endif %}</p>
+            <span id="stage-card-role" class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-20 px-3 py-2 mb-4">{% if player %}{{ player.role }}{% else %}-{% endif %}</span>
+
+            <div class="bg-black bg-opacity-40 border border-secondary border-opacity-10 p-3 rounded-3">
+                <span class="text-white-50 text-uppercase text-xs d-block mb-1">Active Valuation</span>
+                <h2 id="stage-card-bid" class="fw-bold text-success font-monospace mb-0">₹{% if auction_state %}{{ auction_state.current_bid }}{% else %}1000{% endif %}</h2>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-8 col-lg-7">
+        <div class="card glass-card p-4 mb-4">
+            <h5 class="fw-bold text-white mb-3">Corporate Ledger Board</h5>
+            <div class="table-responsive">
+                <table class="table table-dark table-borderless align-middle mb-0 text-nowrap">
+                    <thead>
+                        <tr class="text-muted border-bottom border-secondary border-opacity-10 text-xs text-uppercase">
+                            <th>Franchise Team</th>
+                            <th>Captain Name</th>
+                            <th class="text-center">Roster Size</th>
+                            <th class="text-end">Purse Balance</th>
+                        </tr>
+                    </thead>
+                    <tbody id="purchaser-ledger-body">
+                        {% for team in teams %}
+                        <tr class="border-bottom border-secondary border-opacity-5">
+                            <td class="py-3 fs-5 fw-bold text-white">{{ team.team_name }}</td>
+                            <td class="text-white-50">{{ team.captain_name }}</td>
+                            <td class="text-center"><span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-20 rounded-pill px-3 py-1">{{ team.players|length }} signed</span></td>
+                            <td class="text-end font-monospace text-success fw-bold fs-5">₹{{ team.purse }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card glass-card p-4">
+            <h5 class="fw-bold text-white mb-3">Allocated Roster Signings Matrix</h5>
+            <div id="roster-sync-zone" class="row row-cols-1 row-cols-md-2 g-3">
+                {% for team in teams %}
+                <div class="col">
+                    <div class="p-3 rounded-3 bg-dark bg-opacity-40 border border-secondary border-opacity-10 h-100">
+                        <div class="d-flex justify-content-between align-items-center pb-2 mb-2 border-bottom border-secondary border-opacity-10">
+                            <span class="fw-bold text-warning small text-uppercase">{{ team.team_name }}</span>
+                            <span class="text-white-50 font-monospace text-xs">{{ team.players|length }} Players</span>
+                        </div>
+                        <ul class="list-unstyled mb-0 row g-1">
+                            {% for p in team.players %}
+                            <li class="d-flex justify-content-between align-items-center bg-black bg-opacity-20 p-2 rounded text-xs mb-1">
+                                <div class="text-truncate" style="max-width:140px;">
+                                    <span class="text-white fw-medium d-block text-truncate">{{ p.full_name }}</span>
+                                    <span class="text-muted text-xxs">{{ p.role }}</span>
+                                </div>
+                                <span class="font-monospace text-success fw-bold">₹{{ p.sold_price }}</span>
+                            </li>
+                            {% else %}
+                            <li class="text-muted small text-center my-2 style-italic">No assets signed inside roster limits.</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="pipelines-zone" class="row g-4 mt-1">
+    <div class="col-md-6">
+        <div class="card glass-card p-4 h-100">
+            <h5 class="fw-bold text-info mb-3" id="ready-pipeline-count-lbl">📋 Upcoming Reserve Selection Pipeline ({{ ready_players|length }})</h5>
+            <div id="purchaser-ready-scroller" class="overflow-y-auto pe-1" style="max-height: 380px;">
+                {% for rp in ready_players %}
+                <div class="d-flex align-items-center p-2 mb-2 rounded-3 bg-dark bg-opacity-20 border border-secondary border-opacity-5">
+                    <img src="{{ url_for('static', filename='uploads/' + rp.photo) }}" class="rounded object-fit-cover me-3 bg-dark" style="width: 44px; height: 44px;" onerror="this.src='/static/uploads/default_avatar.png'">
+                    <div class="flex-grow-1 min-w-0">
+                        <h6 class="fw-bold text-white mb-0 text-truncate" style="font-size:0.85rem;">{{ rp.full_name }}</h6>
+                        <span class="text-muted text-xs d-block text-truncate">{{ rp.department }} &bull; {{ rp.role }}</span>
+                    </div>
+                    <button class="btn btn-sm btn-link text-decoration-none text-warning font-large px-2" onclick="toggleWishlistItem('{{ rp.id }}', '{{ rp.full_name }}')">★</button>
+                </div>
+                {% else %}
+                <p class="text-muted text-center py-4 small">Pipeline selection queue is empty.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card glass-card p-4 h-100 border-warning border-opacity-10">
+            <h5 class="fw-bold text-warning mb-3">⭐ Your Private Target Wishlist</h5>
+            <div id="local-wishlist-container" class="overflow-y-auto pe-1" style="max-height: 380px;">
+                </div>
+        </div>
+    </div>
+
+    <div class="col-12 mt-4">
+        <div class="card glass-card p-4">
+            <h5 class="fw-bold text-danger mb-3" id="unsold-pipeline-count-lbl">🔄 Passed-On Unsold Contingency Standbys ({{ unsold_players|length }})</h5>
+            <div id="purchaser-unsold-scroller" class="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-2">
+                {% for up in unsold_players %}
+                <div class="col">
+                    <div class="d-flex align-items-center p-2 bg-dark bg-opacity-20 border border-danger border-opacity-10 rounded-3">
+                        <img src="{{ url_for('static', filename='uploads/' + up.photo) }}" class="rounded object-fit-cover me-2 bg-dark" style="width: 38px; height: 38px;" onerror="this.src='/static/uploads/default_avatar.png'">
+                        <div class="text-truncate">
+                            <span class="fw-bold text-white text-truncate d-block small mb-0">{{ up.full_name }}</span>
+                            <span class="text-muted text-xxs">{{ up.role }}</span>
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="col-12 text-muted small text-center py-2">No players sitting in the unsold standby pool yet.</div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="auction-complete-overlay" class="card glass-card p-5 text-center my-4 {% if not auction_completed %}d-none{% endif %}">
+    <h1 class="display-3 fw-bold text-success mb-2">🏆 DRAFT CONCLUDED</h1>
+    <p class="text-muted">The player pool selection sequence is complete. All rosters are locked.</p>
+</div>
+
+<script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+<script>
+    const socket = io();
+
+    socket.on('auction_updated', function(data) {
+        document.getElementById('active-draft-board').classList.remove('d-none');
+        document.getElementById('auction-complete-overlay').classList.add('d-none');
+
+        if(data.player_photo) document.getElementById('stage-card-photo').src = '/static/uploads/' + data.player_photo;
+        document.getElementById('stage-card-name').innerText = data.player_name || '-';
+        document.getElementById('stage-card-dept').innerText = data.player_department || '-';
+        document.getElementById('stage-card-role').innerText = data.player_role || '-';
+        document.getElementById('stage-card-bid').innerText = '₹' + data.current_bid;
+
+        refreshUIVolumesAsync();
+    });
+
+    socket.on('auction_completed', function() {
+        document.getElementById('active-draft-board').classList.add('d-none');
+        document.getElementById('auction-complete-overlay').classList.remove('d-none');
+    });
+
+    function refreshUIVolumesAsync() {
+        fetch('/purchaser')
+            .then(r => r.text())
+            .then(htmlStr => {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(htmlStr, 'text/html');
+                
+                document.getElementById('purchaser-ledger-body').innerHTML = doc.getElementById('purchaser-ledger-body').innerHTML;
+                document.getElementById('roster-sync-zone').innerHTML = doc.getElementById('roster-sync-zone').innerHTML;
+                document.getElementById('ready-pipeline-count-lbl').innerHTML = doc.getElementById('ready-pipeline-count-lbl').innerHTML;
+                document.getElementById('purchaser-ready-scroller').innerHTML = doc.getElementById('purchaser-ready-scroller').innerHTML;
+                document.getElementById('unsold-pipeline-count-lbl').innerHTML = doc.getElementById('unsold-pipeline-count-lbl').innerHTML;
+                document.getElementById('purchaser-unsold-scroller').innerHTML = doc.getElementById('purchaser-unsold-scroller').innerHTML;
+            });
+    }
+
+    // Client-Side Private Local Browser Wishlist Engines
+    function loadLocalWishlistMetrics() {
+        const stored = JSON.parse(localStorage.getItem('opl_wishlist') || '[]');
+        const targetDiv = document.getElementById('local-wishlist-container');
+        
+        if(stored.length === 0) {
+            targetDiv.innerHTML = '<div class="text-white-50 text-center py-5 small style-italic">Your starred targets appear here privately.</div>';
+            return;
+        }
+
+        let innerAccumulator = '';
+        stored.forEach(item => {
+            innerAccumulator += `
+            <div class="d-flex justify-content-between align-items-center p-2 mb-2 rounded bg-dark bg-opacity-40 border border-warning border-opacity-5 text-sm">
+                <span class="text-white fw-medium">${item.name}</span>
+                <button class="btn btn-sm text-danger text-decoration-none px-2" onclick="removeWishlistItem('${item.id}')">Remove</button>
+            </div>`;
+        });
+        targetDiv.innerHTML = innerAccumulator;
+    }
+
+    function toggleWishlistItem(id, name) {
+        let stored = JSON.parse(localStorage.getItem('opl_wishlist') || '[]');
+        if(stored.some(x => x.id === id)) return;
+        stored.push({ id: id, name: name });
+        localStorage.setItem('opl_wishlist', JSON.stringify(stored));
+        loadLocalWishlistMetrics();
+    }
+
+    window.removeWishlistItem = function(id) {
+        let stored = JSON.parse(localStorage.getItem('opl_wishlist') || '[]');
+        stored = stored.filter(x => x.id !== id);
+        localStorage.setItem('opl_wishlist', JSON.stringify(stored));
+        loadLocalWishlistMetrics();
+    };
+
+    document.addEventListener('DOMContentLoaded', loadLocalWishlistMetrics);
+</script>
+{% endblock %}

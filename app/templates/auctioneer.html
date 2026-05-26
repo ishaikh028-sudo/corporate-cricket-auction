@@ -1,0 +1,295 @@
+{% extends 'base.html' %}
+{% block title %}Auctioneer Control Center{% endblock %}
+
+{% block extra_styles %}
+.card-header-custom { background-color: #0f172a; border-bottom: 1px solid #334155; font-weight: 600; color: #ffffff; padding: 14px 20px; }
+.stage-img { width: 110px; height: 130px; object-fit: cover; border-radius: 6px; border: 2px solid #475569; }
+.live-bid-display { font-size: 2.2rem; font-weight: 800; color: #60a5fa; }
+.team-row { background: #1e293b; transition: background 0.2s; border-bottom: 1px solid #334155; cursor: pointer; }
+.team-row:hover { background: #334155; }
+.roster-collapse { background: #0f172a; padding: 10px; border-radius: 4px; }
+{% endblock %}
+
+{% block content %}
+<div class="row g-3">
+    <div class="col-lg-5">
+        
+        <div class="card dashboard-card bg-dark border-secondary text-white mb-3">
+            <div class="card-header card-header-custom d-flex justify-content-between align-items-center">
+                <span><i class="fa-solid fa-tower-broadcast text-danger me-2"></i>1) Player Profile block</span>
+                <div id="deckStatusBadge" class="badge bg-warning text-dark px-2.5 py-1.5 fw-bold">{{ state.status if state else 'INITIALIZED' }}</div>
+            </div>
+            <div id="controlsBody" class="card-body p-3">
+                
+                <div id="initBlock" class="text-center py-4 {% if state and state.status != 'INITIALIZED' %}d-none{% endif %}">
+                    <button class="btn btn-success fw-bold px-4 py-2" onclick="triggerServerEvent('start_auction')">🚀 START AUCTION !!</button>
+                </div>
+
+                <div id="nextPlayerBufferBlock" class="text-center py-3 {% if state and state.status not in ['SOLD_SPLASH', 'UNSOLD_SPLASH'] %}d-none{% endif %}">
+                    <div class="alert alert-info py-2 small mb-3">Stage clear. Ready to recall next profile up.</div>
+                    <button class="btn btn-info text-dark fw-bold w-100 py-3 mb-2" onclick="triggerServerEvent('summon_next_player')">📋 NEXT PLAYER</button>
+                </div>
+
+                <div id="activeRosterBlock" class="{% if state and state.status not in ['ACTIVE', 'BREAK'] %}d-none{% endif %}">
+                    <div class="d-flex align-items-center mb-3">
+                        <img id="stagePlayerPhoto" src="{% if state and state.active_player and state.active_player.photo %}/static/uploads/{{ state.active_player.photo }}{% else %}https://ui-avatars.com/api/?name=P&background=334155&color=fff{% endif %}" class="stage-img me-3 shadow" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=P&background=334155&color=fff';">
+                        <div class="flex-grow-1">
+                            <span id="stagePlayerRole" class="badge bg-danger mb-1 fw-bold">{% if state and state.active_player %}{{ state.active_player.role }}{% else %}-{% endif %}</span>
+                            <h3 id="stagePlayerName" class="fw-bold text-white m-0">{% if state and state.active_player %}{{ state.active_player.full_name }}{% else %}Syncing...{% endif %}</h3>
+                            <small id="stagePlayerDept" class="text-white-50 d-block mb-2">{% if state and state.active_player %}Dept: {{ state.active_player.department }}{% else %}-{% endif %}</small>
+                            <div class="bg-black p-2 rounded text-center border border-secondary">
+                                <small class="text-muted d-block fw-bold" style="font-size:0.65rem;">CURRENT BID COUNTER</small>
+                                <div id="stageCurrentBid" class="live-bid-display">₹{% if state %}{{ state.current_bid|toLocaleString }}{% else %}0{% endif %}</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row g-2 mb-3">
+                        <div class="col-6"><button class="btn btn-primary w-100 py-2.5 fw-bold fs-5 shadow-sm" onclick="triggerServerEvent('increment_bid')"><i class="fa-solid fa-plus"></i> 1,000</button></div>
+                        <div class="col-6"><button class="btn btn-outline-light w-100 py-2.5 fw-bold fs-5 shadow-sm" onclick="triggerServerEvent('decrement_bid')"><i class="fa-solid fa-minus"></i> 1,000</button></div>
+                    </div>
+                    <button class="btn btn-danger w-100 py-2 fw-semibold shadow-sm mb-3" onclick="if(confirm('Pass player unsold?')) triggerServerEvent('mark_unsold')"><i class="fa-solid fa-ban"></i> Pass - Unsold</button>
+
+                    <h6 class="fw-bold text-white-50 small mb-2 text-uppercase">Sell Player To:</h6>
+                    <div id="quickTeamsAssignMap" class="row g-1 bg-black p-2 rounded" style="max-height:150px; overflow-y:auto;">
+                        {% for team in teams %}
+                        <div class="col-6 mb-1">
+                            <button class="btn btn-sm btn-success w-100 text-truncate text-start p-1.5 fw-semibold" onclick="sellToFranchiseDirect('{{ team.id }}', '{{ team.team_name }}')">
+                                ⚖️ {{ team.team_name }} (₹{{ team.purse|toLocaleString }})
+                            </button>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <div class="card dashboard-card bg-dark border-secondary text-white">
+            <div class="card-header card-header-custom">
+                <i class="fa-solid fa-sliders text-success me-2"></i>2) Settlement & Operations Control
+            </div>
+            <div class="card-body p-3">
+                <div id="utilityDeckEngine" class="{% if state and state.status == 'INITIALIZED' %}d-none{% endif %}">
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <button id="haltBtn" class="btn btn-sm {% if state and state.status == 'BREAK' %}btn-warning{% else %}btn-outline-warning{% endif %} w-100 py-2 fw-bold" onclick="triggerServerEvent('toggle_halt_break')">
+                                {% if state and state.status == 'BREAK' %}▶️ RESUME AUCTION{% else %}⏸️ HALT / BREAK TIME{% endif %}
+                            </button>
+                        </div>
+                        <div class="col-6">
+                            <button class="btn btn-sm btn-outline-danger w-100 py-2 fw-bold" onclick="if(confirm('Permanently seal and close auction?')) triggerServerEvent('finalize_close_auction')">🏁 AUCTION COMPLETED</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="completionSlate" class="text-center py-3 {% if state and state.status != 'COMPLETED' %}d-none{% endif %}">
+                    <i class="fa-solid fa-check-double text-success fa-2x mb-2"></i>
+                    <h6 class="fw-bold text-white mb-0">Event Safely Closed & Finalized</h6>
+                </div>
+
+                <div class="border-top border-danger border-dashed pt-3 mt-3 bg-black p-2.5 rounded border border-secondary">
+                    <h6 class="text-danger fw-bold small text-uppercase mb-1"><i class="fa-solid fa-triangle-exclamation me-1"></i> Maintenance System</h6>
+                    <button class="btn btn-sm btn-danger w-100 fw-bold py-1.5" onclick="if(confirm('🚨 WARNING: This will permanently wipe all current sale records, clear team rosters, and restore everyone\'s budget purse to maximum! Proceed?')) triggerServerEvent('recycle_unsold_pool')">
+                        🔄 RESTART AUCTION
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="col-lg-7">
+        <div class="card dashboard-card bg-dark border-secondary text-white h-100">
+            <div class="card-header card-header-custom d-flex justify-content-between align-items-center">
+                <span><i class="fa-solid fa-wallet text-info me-2"></i>3) Live - Team Portfolios</span>
+                <small class="text-muted">Click rows to inspect portfolios</small>
+            </div>
+            <div id="teamsStandingsContainer" class="card-body p-0" style="max-height: 640px; overflow-y:auto;">
+                {% for team in teams %}
+                <div class="team-row p-3 d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#roster-tray-{{ team.id }}">
+                    <div>
+                        <span class="fw-bold text-white fs-5"><i class="fa-solid fa-shield-halved text-white-50 me-2"></i>{{ team.team_name }}</span>
+                        <small class="d-block font-monospace text-muted mt-1">Manager: {{ team.captain_name }}</small>
+                    </div>
+                    <span class="badge bg-black border border-light font-monospace p-2.5 fs-5 shadow-sm text-success">₹{{ team.purse|toLocaleString }}</span>
+                </div>
+                <div id="roster-tray-{{ team.id }}" class="collapse bg-black border-bottom border-secondary">
+                    <div class="p-3">
+                        <h6 class="small text-white-50 fw-bold text-uppercase tracking-wider mb-2">Acquired Members ({{ team.players|length }}):</h6>
+                        <ul class="list-unstyled mb-0 row g-2">
+                            {% if not team.players %}
+                                <li class="col-12 text-muted small italic p-1">No players bought yet.</li>
+                            {% else %}
+                                {% for p in team.players %}
+                                    <li class="col-6 small text-white d-flex justify-content-between bg-dark border border-secondary rounded p-2">
+                                        <span>👤 {{ p.full_name }} ({{ p.role }})</span>
+                                        <strong class="text-warning">₹{{ p.sold_price|toLocaleString }}</strong>
+                                    </li>
+                                {% endfor %}
+                            {% endif %}
+                        </ul>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+<script>
+    const socket = io({ transports: ['websocket', 'polling'] });
+    let trackedOpenTrays = new Set();
+
+    socket.on('connect', () => { console.log('Control Deck Handshake Sync Complete.'); });
+    socket.on('error_alert', (data) => alert("⚠️ " + data.message));
+
+    window.triggerServerEvent = function(eventName, data = {}) {
+        fetch(`/admin/api/trigger/${eventName}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        })
+        .then(response => response.json())
+        .then(res => {
+            if (res.status === 'error') {
+                alert("⚠️ " + res.message);
+            } else if (eventName === 'recycle_unsold_pool') {
+                window.location.reload();
+            }
+        })
+        .catch(err => console.error("Control API fault:", err));
+    };
+
+    window.sellToFranchiseDirect = function(teamId, teamName) {
+        if (confirm(`Confirm final sale assignment to ${teamName}?`)) {
+            fetch(`/admin/api/sell_player/${teamId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            })
+            .then(response => response.json())
+            .then(res => { if (res.status === 'error') alert("⚠️ " + res.message); })
+            .catch(err => console.error("Sale API fault:", err));
+        }
+    };
+
+    socket.on('global_auction_packet', (packet) => {
+        if (!packet || !packet.status) return;
+        
+        const status = packet.status;
+        const badge = document.getElementById('deckStatusBadge');
+        if (badge) {
+            badge.className = `badge ${status === 'BREAK' ? 'bg-danger' : status === 'COMPLETED' ? 'bg-success' : 'bg-primary'} px-2.5 py-1.5 fw-bold`;
+            badge.innerText = status;
+        }
+
+        document.getElementById('initBlock').classList.add('d-none');
+        document.getElementById('nextPlayerBufferBlock').classList.add('d-none');
+        document.getElementById('activeRosterBlock').classList.add('d-none');
+        document.getElementById('utilityDeckEngine').classList.add('d-none');
+        document.getElementById('completionSlate').classList.add('d-none');
+
+        renderTeamsRosterPortfolio(packet.teams);
+
+        if (status === 'INITIALIZED') {
+            document.getElementById('initBlock').classList.remove('d-none');
+        } 
+        else if (status === 'COMPLETED') {
+            document.getElementById('completionSlate').classList.remove('d-none');
+        } 
+        else if (status === 'SOLD_SPLASH' || status === 'UNSOLD_SPLASH') {
+            document.getElementById('nextPlayerBufferBlock').classList.remove('d-none');
+            document.getElementById('utilityDeckEngine').classList.remove('d-none');
+        } 
+        else if (status === 'ACTIVE' || status === 'BREAK') {
+            document.getElementById('activeRosterBlock').classList.remove('d-none');
+            document.getElementById('utilityDeckEngine').classList.remove('d-none');
+
+            if (packet.player) {
+                document.getElementById('stagePlayerPhoto').src = packet.player.photo ? `/static/uploads/${packet.player.photo}` : '/static/uploads/default_avatar.png';
+                document.getElementById('stagePlayerName').innerText = packet.player.full_name;
+                document.getElementById('stagePlayerRole').innerText = packet.player.role;
+                document.getElementById('stagePlayerDept').innerText = `Dept: ${packet.player.department}`;
+                document.getElementById('stageCurrentBid').innerText = `₹${packet.current_bid.toLocaleString()}`;
+            }
+
+            const quickAssignMap = document.getElementById('quickTeamsAssignMap');
+            if (quickAssignMap) {
+                quickAssignMap.innerHTML = '';
+                packet.teams.forEach(t => {
+                    const col = document.createElement('div');
+                    col.className = 'col-6 mb-1';
+                    col.innerHTML = `
+                        <button class="btn btn-sm btn-success w-100 text-truncate text-start p-1.5 fw-semibold" onclick="sellToFranchiseDirect('${t.id}', '${t.team_name}')">
+                            ⚖️ ${t.team_name} (₹${t.purse.toLocaleString()})
+                        </button>
+                    `;
+                    quickAssignMap.appendChild(col);
+                });
+            }
+
+            const haltBtn = document.getElementById('haltBtn');
+            if (haltBtn) {
+                haltBtn.innerText = status === 'BREAK' ? '▶️ RESUME AUCTION' : '⏸️ HALT / BREAK TIME';
+                haltBtn.className = status === 'BREAK' ? 'btn btn-sm btn-warning w-100 py-2 fw-bold' : 'btn btn-sm btn-outline-warning w-100 py-2 fw-bold';
+            }
+        }
+    });
+
+    function renderTeamsRosterPortfolio(teamsArray) {
+        const container = document.getElementById('teamsStandingsContainer');
+        if (!container || !teamsArray) return;
+        
+        document.querySelectorAll('.collapse.show').forEach(el => { trackedOpenTrays.add(el.id); });
+        container.innerHTML = '';
+        
+        teamsArray.forEach(team => {
+            const isExpanded = trackedOpenTrays.has(`roster-tray-${team.id}`);
+            const teamRow = document.createElement('div');
+            teamRow.className = 'team-row p-3 d-flex justify-content-between align-items-center';
+            teamRow.setAttribute('data-bs-toggle', 'collapse');
+            teamRow.setAttribute('data-bs-target', `#roster-tray-${team.id}`);
+            teamRow.innerHTML = `
+                <div>
+                    <span class="fw-bold text-white fs-5"><i class="fa-solid fa-shield-halved text-white-50 me-2"></i>${team.team_name}</span>
+                    <small class="d-block font-monospace text-muted mt-1">Manager: ${team.captain_name}</small>
+                </div>
+                <span class="badge bg-black border border-light font-monospace p-2.5 fs-5 shadow-sm text-success">₹${team.purse.toLocaleString()}</span>
+            `;
+
+            const collapseTray = document.createElement('div');
+            collapseTray.id = `roster-tray-${team.id}`;
+            collapseTray.className = `collapse bg-black border-bottom border-secondary ${isExpanded ? 'show' : ''}`;
+            
+            let membersHtml = '';
+            if (!team.roster || team.roster.length === 0) {
+                membersHtml = '<li class="col-12 text-muted small italic p-1">No players bought yet.</li>';
+            } else {
+                team.roster.forEach(p => {
+                    membersHtml += `
+                        <li class="col-6 small text-white d-flex justify-content-between bg-dark border border-secondary rounded p-2">
+                            <span>👤 ${p.name} (${p.role})</span>
+                            <strong class="text-warning">₹${p.price.toLocaleString()}</strong>
+                        </li>
+                    `;
+                });
+            }
+
+            collapseTray.innerHTML = `
+                <div class="p-3">
+                    <h6 class="small text-white-50 fw-bold text-uppercase tracking-wider mb-2">Acquired Members (${team.roster ? team.roster.length : 0}):</h6>
+                    <ul class="list-unstyled mb-0 row g-2">${membersHtml}</ul>
+                </div>
+            `;
+
+            collapseTray.addEventListener('shown.bs.collapse', () => trackedOpenTrays.add(collapseTray.id));
+            collapseTray.addEventListener('hidden.bs.collapse', () => trackedOpenTrays.delete(collapseTray.id));
+
+            container.appendChild(teamRow);
+            container.appendChild(collapseTray);
+        });
+    }
+</script>
+{% endblock %}

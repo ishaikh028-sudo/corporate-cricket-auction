@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+
+{% block title %}Franchise Clubs Directory{% endblock %}
+
+{% block extra_styles %}
+.team-panel { background-color: #1e293b; border: 1px solid #334155; }
+.text-label-dark { color: #cbd5e1 !important; font-weight: 600; font-size: 0.8rem; }
+.bg-team-card { background-color: #0f172a !important; border: 1px solid #334155 !important; border-top: none !important; border-top-left-radius: 0 !important; border-top-right-radius: 0 !important; }
+.team-clickable-header { background-color: #0f172a; border: 1px solid #334155; border-radius: 6px; cursor: pointer; transition: background 0.15s ease-in-out; }
+.team-clickable-header:hover { background-color: #1e293b; }
+.team-clickable-header[aria-expanded="true"] { border-bottom-left-radius: 0; border-bottom-right-radius: 0; background-color: #1e293b; border-bottom: 1px dashed #475569; }
+{% endblock %}
+
+{% block content %}
+<div class="container my-2">
+    <div class="row g-4">
+        <div class="col-lg-4">
+            <div class="card team-panel p-4">
+                <h5 class="fw-bold mb-3 text-white"><i class="fa-solid fa-square-plus text-primary me-2"></i>New Team Registration</h5>
+                <form action="/teams" method="POST">
+                    <div class="mb-3">
+                        <label class="text-label-dark mb-2">Team Name</label>
+                        <input type="text" name="team_name" class="form-control" placeholder="e.g. Royal Challengers" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="text-label-dark mb-2">Captain / Manager Name</label>
+                        <input type="text" name="captain_name" class="form-control" placeholder="e.g. John Doe" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100 fw-bold shadow">Register Team</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="col-lg-8">
+            <div class="card team-panel p-4">
+                <h5 class="fw-bold mb-3 text-white"><i class="fa-solid fa-list-check text-success me-2"></i>Current Teams</h5>
+                <div class="row g-2">
+                    {% if not teams %}
+                        <p class="text-muted text-center py-4">No active franchise clubs detected.</p>
+                    {% else %}
+                        {% for team in teams %}
+                            <div class="col-12 mb-1">
+                                <div class="team-clickable-header p-3 d-flex justify-content-between align-items-center" 
+                                     data-bs-toggle="collapse" 
+                                     data-bs-target="#edit-panel-{{ team.id }}" 
+                                     aria-expanded="false">
+                                    <div>
+                                        <h6 class="fw-bold text-white m-0"><i class="fa-solid fa-shield-halved text-info me-2"></i>{{ team.team_name }}</h6>
+                                        <small class="text-muted font-monospace">Manager: {{ team.captain_name }}</small>
+                                    </div>
+                                    <div class="d-flex align-items-center">
+                                        <span class="badge bg-dark border border-secondary text-success font-monospace fs-6 me-3">₹{{ team.purse }}</span>
+                                        <i class="fa-solid fa-chevron-down text-muted"></i>
+                                    </div>
+                                </div>
+                                
+                                <div id="edit-panel-{{ team.id }}" class="collapse">
+                                    <div class="p-3 bg-team-card rounded-bottom">
+                                        <form action="/admin/team/edit/{{ team.id }}" method="POST">
+                                            <div class="row g-3">
+                                                <div class="col-md-6">
+                                                    <label class="text-label-dark mb-1">Modify Team Name</label>
+                                                    <input type="text" name="team_name" value="{{ team.team_name }}" class="form-control form-control-sm fw-bold text-white" required>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <label class="text-label-dark mb-1">Modify Captain Name</label>
+                                                    <input type="text" name="captain_name" value="{{ team.captain_name }}" class="form-control form-control-sm text-white" required>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <label class="text-label-dark mb-1">Adjust Purse Budget (₹)</label>
+                                                    <input type="number" name="purse" value="{{ team.purse }}" class="form-control form-control-sm text-info fw-bold" required>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <label class="text-label-dark mb-1">Squad Roster Size</label>
+                                                    <input type="text" class="form-control form-control-sm bg-dark text-white-50 border-secondary" value="{{ team.players|length }} Players Signed" disabled>
+                                                </div>
+                                            </div>
+                                            <div class="d-flex justify-content-between mt-3 pt-2 border-top border-secondary">
+                                                <button type="submit" class="btn btn-sm btn-success px-3 shadow"><i class="fa-solid fa-floppy-disk me-1"></i> Save Configuration</button>
+                                                <a href="/admin/team/delete/{{ team.id }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Drop franchise? Signed players will be instantly released back to available pools.');"><i class="fa-solid fa-trash-can"></i> Delete Team</a>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

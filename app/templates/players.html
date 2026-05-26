@@ -1,0 +1,127 @@
+{% extends 'base.html' %}
+
+{% block title %}Registered Player Pool Directory{% endblock %}
+
+{% block extra_styles %}
+.player-card { overflow:hidden; transition: transform 0.2s; background-color: #1e293b; border-color: #334155; }
+.player-card:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(0,0,0,0.4); }
+.card-img-container { height: 260px; overflow: hidden; background-color: #0f172a; position: relative; }
+.card-img-container img { width:100%; height:100%; object-fit: cover; }
+.badge-role { position: absolute; top:12px; right:12px; font-weight: 600; padding: 6px 12px; border-radius: 30px; box-shadow: 0 2px 5px rgba(0,0,0,0.3); }
+.text-label-dark { color: #cbd5e1 !important; font-weight: 600; font-size: 0.8rem; }
+{% endblock %}
+
+{% block content %}
+<div class="container my-2">
+    <div class="row g-4">
+        {% if not players %}
+            <div class="col-12 text-center py-5">
+                <p class="text-muted"><i class="fa-solid fa-folder-open fa-3x d-block mb-3 opacity-50"></i>No player registration records found.</p>
+            </div>
+        {% else %}
+            {% for player in players %}
+                <div class="col-xl-3 col-lg-4 col-md-6">
+                    <div class="card player-card h-100">
+                        <div class="card-img-container">
+                            <img src="{{ url_for('static', filename='uploads/' + player.photo) }}">
+                            <span class="badge bg-danger badge-role text-white">{{ player.role }}</span>
+                        </div>
+                        <div class="card-body p-3">
+                            <span class="badge bg-secondary mb-2" style="font-size: 0.7rem;">Status: {{ player.status }}</span>
+                            <h5 class="fw-bold text-white mb-1">{{ player.full_name }}</h5>
+                            <p class="text-muted small mb-2"><i class="fa-solid fa-building me-1"></i> Dept: {{ player.department }}</p>
+                            <div class="bg-dark p-2 rounded text-center border border-secondary fw-bold text-info mb-3">Base Price: ₹{{ player.base_price }}</div>
+                            
+                            <div class="d-grid gap-2">
+                                <button class="btn btn-sm btn-outline-info" data-bs-toggle="collapse" data-bs-target="#editRowForm-{{ player.id }}"><i class="fa-solid fa-user-gear me-1"></i> Edit Details / Upload Photo</button>
+                                
+                                <button type="button" 
+                                        class="btn btn-sm btn-outline-danger" 
+                                        onclick="if(confirm('Permanently remove this record?')) { 
+                                            fetch('/admin/player/delete/{{ player.id }}', { method: 'POST' })
+                                            .then(response => {
+                                                if(response.ok) {
+                                                    this.closest('.col-xl-3').remove();
+                                                } else {
+                                                    alert('⚠️ Error deleting player.');
+                                                }
+                                            })
+                                            .catch(err => console.error('Delete operation communication error:', err));
+                                        }">
+                                    <i class="fa-solid fa-trash-can me-1"></i> Delete Player
+                                </button>
+                            </div>
+
+                            <div class="collapse mt-3 border-top border-secondary pt-3" id="editRowForm-{{ player.id }}">
+                                <form onsubmit="submitInlinePlayerEdit(event, '{{ player.id }}')" enctype="multipart/form-data">
+                                    <div class="mb-2">
+                                        <label class="text-label-dark mb-1">Full Name</label>
+                                        <input type="text" name="full_name" value="{{ player.full_name }}" class="form-control form-control-sm" required>
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="text-label-dark mb-1">Department</label>
+                                        <input type="text" name="department" value="{{ player.department }}" class="form-control form-control-sm" required>
+                                    </div>
+                                    <div class="row g-2 mb-2">
+                                        <div class="col-7">
+                                            <label class="text-label-dark mb-1">Role Type</label>
+                                            <select name="role" class="form-select form-select-sm">
+                                                <option value="Batsman" {% if player.role == 'Batsman' %}selected{% endif %}>Batsman</option>
+                                                <option value="Bowler" {% if player.role == 'Bowler' %}selected{% endif %}>Bowler</option>
+                                                <option value="All Rounder" {% if player.role == 'All Rounder' %}selected{% endif %}>All Rounder</option>
+                                                <option value="All-Rounder" {% if player.role == 'All-Rounder' %}selected{% endif %}>All-Rounder</option>
+                                                <option value="Wicketkeeper" {% if player.role == 'Wicketkeeper' %}selected{% endif %}>Wicketkeeper</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-5">
+                                            <label class="text-label-dark mb-1">Base (₹)</label>
+                                            <input type="number" name="base_price" value="{{ player.base_price }}" class="form-control form-control-sm" required>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="text-label-dark d-block mb-1">Update Roster Photo File</label>
+                                        <input type="file" name="photo" class="form-control form-control-sm mb-2">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="delete_photo" value="true" id="delPhotoCheck-{{ player.id }}">
+                                            <label class="form-check-label text-warning small font-monospace" style="font-size:0.75rem;" for="delPhotoCheck-{{ player.id }}">Remove Custom Photo</label>
+                                        </div>
+                                    </div>
+                                    <button type="submit" class="btn btn-success btn-sm w-100 fw-bold shadow"><i class="fa-solid fa-square-check me-1"></i> Commit Modifications</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // Handles seamless inline roster modifications behind the scenes
+    function submitInlinePlayerEdit(event, playerId) {
+        event.preventDefault();
+        
+        const formElement = event.target;
+        const formData = new FormData(formElement);
+
+        fetch(`/admin/player/edit/${playerId}`, {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => {
+            if (response.ok) {
+                window.location.reload();
+            } else {
+                alert("⚠️ Error saving player registration updates.");
+            }
+        })
+        .catch(err => {
+            console.error("Network connectivity issue tracking updates:", err);
+            alert("⚠️ Something went wrong processing data communications.");
+        });
+    }
+</script>
+{% endblock %}
