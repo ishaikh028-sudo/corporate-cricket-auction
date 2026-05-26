@@ -70,4 +70,5 @@ websockets==16.0
 Werkzeug==3.1.6
 xlsxwriter==3.2.9
 gunicorn
-eventlet
+gevent
+gevent-websocket
